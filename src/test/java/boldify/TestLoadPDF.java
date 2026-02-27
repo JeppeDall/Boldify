@@ -5,7 +5,7 @@ import org.junit.Test;
 public class TestLoadPDF {
 
     @Test
-    public void shouldCorrectlyParseAPDF() {
+    public void shouldCorrectlyParsePDF() {
         System.out.println("Fake it");
     }
 }
