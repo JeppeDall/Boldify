@@ -4,7 +4,7 @@ import boldify.standard.StandardParser;
 
 public class Main {
     public static void main(String[] args) {
-        // No arguments are expected
+        // One argument is expected
         allow1Argument(args);
 
         String arg = args[0];
