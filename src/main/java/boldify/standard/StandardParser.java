@@ -1,14 +1,10 @@
 package boldify.standard;
 
 import org.apache.pdfbox.Loader;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.pdmodel.PDDocumentNameDestinationDictionary;
-import org.apache.pdfbox.pdmodel.PDPage;
-import org.apache.pdfbox.pdmodel.PDPageContentStream;
-import org.apache.pdfbox.pdmodel.font.PDFont;
-import org.apache.pdfbox.pdmodel.font.PDType0Font;
-import org.apache.pdfbox.pdmodel.font.PDType1Font;
-import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import org.apache.pdfbox.cos.COSName;
+import org.apache.pdfbox.pdmodel.*;
+import org.apache.pdfbox.pdmodel.common.PDStream;
+import org.apache.pdfbox.pdmodel.font.*;
 import org.apache.pdfbox.text.PDFTextStripper;
 
 import java.io.File;
@@ -51,11 +47,7 @@ public class StandardParser {
         // Create a stripper for reading input documents contents
         PDFTextStripper stripper = new PDFTextStripper();
 
-        // Load font once for the entire document and pass it along
-        PDFont font = PDType0Font.load(outputDocument,
-                new File("C:/Windows/Fonts/arial.ttf"));
-
-        // Loop through pages, calling the boldify algorithm on each page
+        // Loop through pages, calling the boldify algorithm on one page at a time
         int numberOfPages = inputdocument.getNumberOfPages();
         for (int i = 0; i < numberOfPages; i++) {
             // Process only 1 page at a time
@@ -64,9 +56,43 @@ public class StandardParser {
             stripper.setEndPage(i+1);
             // Get the text from page i
             String text = stripper.getText(inputdocument);
+
+            // Copy the font from the original page
+            PDPage page = inputdocument.getPage(i);
+            PDFont font = copyFont(outputDocument, page);
+
             // Call boldify algorithm
             processPage(text, outputDocument, font);
         }
+    }
+
+    /** Copy the font used on the page as the FOnt for the outputdocument.
+     * If no font is found, teh default will be Helvetica
+     *
+     * @param outputDocument The document the font will be embedded into
+     * @param page The source page to inspect
+     * @throws IOException
+     */
+    private PDFont copyFont(PDDocument outputDocument, PDPage page) throws IOException {
+        PDResources resources = page.getResources();
+        if (resources != null) {
+            for (COSName fontName : resources.getFontNames()) {
+                PDFont sourceFont = resources.getFont(fontName);
+                PDFontDescriptor descriptor = sourceFont.getFontDescriptor();
+
+                if (descriptor != null) {
+                    PDStream fontFile2 = descriptor.getFontFile2(); // embedded TrueType
+                    if (fontFile2 != null) {
+                        try (InputStream in = fontFile2.createInputStream()) {
+                            return PDType0Font.load(outputDocument, in);
+                        }
+                    }
+                }
+                break; // only look at the first font on the page
+            }
+        }
+        // Default to Helvetica if no font is found
+        return new PDType1Font(Standard14Fonts.FontName.HELVETICA);
     }
 
     /** Helper function to handle editing of text in a PDF.
