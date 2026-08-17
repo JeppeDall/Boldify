@@ -51,10 +51,8 @@ public class StandardParser {
         PDFTextStripper stripper = new PDFTextStripper();
 
         // Load both fonts once for the entire document
-        PDFont regularFont = PDType0Font.load(outputDocument,
-                new File("C:/Windows/Fonts/arial.ttf"));
-        PDFont boldFont = PDType0Font.load(outputDocument,
-                new File("C:/Windows/Fonts/arialbd.ttf"));
+        PDFont regularFont = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
+        PDFont boldFont    = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
 
         // Loop through pages, calling the boldify algorithm on one page at a time
         int numberOfPages = inputdocument.getNumberOfPages();
@@ -124,7 +122,7 @@ public class StandardParser {
                 // Boldify first letters of each word
                 String[] parts = boldifyWord(word);
 
-                // Write the word back, adding a space after the wor unless it is the last on the line
+                // Write the word back, adding a space after the word unless it is the last on the line
                 String bold = parts[0];
                 String nonBold = parts[1] + (w < words.length - 1 ? " " : "");
 
@@ -216,6 +214,12 @@ public class StandardParser {
         }
     }
 
+    /** Check characters and replace illegal ones with ?
+     *
+     * @param text The text to check
+     * @param font The font to encode a character as
+     * @return The sanitized String
+     */
     private String sanitizeForFont(String text, PDFont font) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < text.length(); ) {
