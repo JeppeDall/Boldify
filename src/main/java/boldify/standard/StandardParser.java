@@ -10,9 +10,12 @@ import org.apache.pdfbox.text.PDFTextStripper;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 
 public class StandardParser {
+
 
     public StandardParser() {
         String inputPath = "C:\\Users\\Jeppe\\OneDrive\\Skrivebord\\test.pdf";
@@ -47,6 +50,12 @@ public class StandardParser {
         // Create a stripper for reading input documents contents
         PDFTextStripper stripper = new PDFTextStripper();
 
+        // Load both fonts once for the entire document
+        PDFont regularFont = PDType0Font.load(outputDocument,
+                new File("C:/Windows/Fonts/arial.ttf"));
+        PDFont boldFont = PDType0Font.load(outputDocument,
+                new File("C:/Windows/Fonts/arialbd.ttf"));
+
         // Loop through pages, calling the boldify algorithm on one page at a time
         int numberOfPages = inputdocument.getNumberOfPages();
         for (int i = 0; i < numberOfPages; i++) {
@@ -61,8 +70,9 @@ public class StandardParser {
             PDPage page = inputdocument.getPage(i);
             PDFont font = copyFont(outputDocument, page);
 
-            // Call boldify algorithm
-            processPage(text, outputDocument, font);
+            // Save each page in a list wth each line being a list within it
+            List<List<TextRun>> boldifiedLines = boldifyText(text);
+            addToPDF(boldifiedLines, outputDocument, regularFont, boldFont);
         }
     }
 
@@ -95,52 +105,130 @@ public class StandardParser {
         return new PDType1Font(Standard14Fonts.FontName.HELVETICA);
     }
 
-    /** Helper function to handle editing of text in a PDF.
-     * Currently Fake-it. Should implement some boldify algorithm
-     * @param text
-     * @param font The font to use in output
-     * @throws IOException
+    /** Use the TextRun record to create lines from some page text
+     *
+     * @param text the text from PDFTextStripper
+     * @return A lsit of lines consisting of TextRuns
      */
-    private void processPage(String text, PDDocument outputDocument, PDFont font) throws IOException {
-        // Currently using input text as output text. Should have algorithm applied
-        String editedText = text;
-        addToPDF(editedText, outputDocument, font);
+    private List<List<TextRun>> boldifyText(String text) {
+        List<List<TextRun>> lines = new ArrayList<>();
+
+        // For each line in the page
+        for ( String line : text.split("\\r?\\n")) {
+            List <TextRun> runs = new ArrayList<>();
+            String[] words = line.split(" ");
+
+            // For each word in the line
+            for (int w = 0; w < words.length; w++) {
+                String word = words[w];
+                // Boldify first letters of each word
+                String[] parts = boldifyWord(word);
+
+                // Write the word back, adding a space after the wor unless it is the last on the line
+                String bold = parts[0];
+                String nonBold = parts[1] + (w < words.length - 1 ? " " : "");
+
+                runs.add(new TextRun(bold, true));
+                runs.add(new TextRun(nonBold, false));
+            }
+            // Add the lines to the list representing the page
+            lines.add(runs);
+        }
+        // Return the whole page
+        return lines;
     }
 
-    /** Add the given text to a PDDDocument, by creating a new page
+    /** Split a single word into its bold and regular parts
      *
-     * @param text The text to insert into a new page. Expected to be able to fit on a single page (currently)
-     * @param outputDocument The document to insert into
-     * @param font The font to use in output
+     * @param word The word to split
+     * @return [boldPart, regularPart]
+     */
+    public String[] boldifyWord(String word) {
+        // Count the letters in each word
+        int letterCount = 0;
+        for (char c : word.toCharArray()) {
+            if (Character.isLetter(c)) { letterCount++; }
+        }
+        int boldLetters = getBoldLength(letterCount);
+
+        // Walk the word to find where the bold portion ends
+        int boldUntil = 0;
+        int lettersFound = 0;
+        for (int i = 0; i < word.length(); i++) {
+            if (Character.isLetter(word.charAt(i))) {
+                lettersFound++;
+            }
+            if (lettersFound == boldLetters) {
+                boldUntil = i + 1;
+                break;
+            }
+        }
+
+        return new String[]{
+                word.substring(0, boldUntil),
+                word.substring(boldUntil)};
+    }
+
+    /** Takes a word and returns how many characters to make bold depending on its length
+     *
+     * @param wordLength The number of characters in the word
+     * @return How many words to make bold
+     */
+    private int getBoldLength(int wordLength) {
+        if (wordLength <= 2) return 0;
+        if (wordLength <= 5) return 2;
+        if (wordLength <= 7) return 3;
+        if (wordLength <= 9) return 4;
+        return wordLength / 2;
+    }
+
+    /** Write boldified lines to a new page in the output document
+     *
+     * @param lines Lines of TextRuns to write
+     * @param outputDocument The document to write to
+     * @param regularFont The font that is not bold
+     * @param boldFont The font that is bold
      * @throws IOException
      */
-    private void addToPDF(String text, PDDocument outputDocument, PDFont font) throws IOException {
-        // Create a blank page and add it to the output document
+    private void addToPDF(List<List<TextRun>> lines, PDDocument outputDocument,
+                          PDFont regularFont, PDFont boldFont) throws IOException {
         PDPage newPage = new PDPage();
         outputDocument.addPage(newPage);
 
-        // Insert the contents into the new blank page
         try (PDPageContentStream cs = new PDPageContentStream(outputDocument, newPage)) {
             cs.beginText();
-            cs.setFont(font, 12);
-
-            // Set starting position (x, y) — origin is bottom-left corner of the page
-            // A4 is 595 x 842 points, so this starts near the top-left
             cs.newLineAtOffset(50, 750);
-
-            // Set line spacing for newLine() calls
             cs.setLeading(16f);
 
-            // showText() cannot handle \n directly
-            String[] lines = text.split("\\r?\\n");
-
-            // Write each line separately
-            for (String line : lines) {
-                cs.showText(line);
-                cs.newLine();
+            try {
+                for (List<TextRun> line : lines) {
+                    for (TextRun run : line) {
+                        if (run.text().isEmpty()) continue;
+                        PDFont font = run.bold() ? boldFont : regularFont;
+                        cs.setFont(font, 12);
+                        cs.showText(sanitizeForFont(run.text(), font));
+                    }
+                    cs.newLine();
+                }
+            } finally {
+                cs.endText();
             }
-
-            cs.endText();
         }
+    }
+
+    private String sanitizeForFont(String text, PDFont font) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < text.length(); ) {
+            int codePoint = text.codePointAt(i);
+            String ch = new String(Character.toChars(codePoint));
+            try {
+                font.encode(ch);
+                sb.append(ch);
+            } catch (Exception e) {
+                sb.append("?");
+            }
+            i += Character.charCount(codePoint);
+        }
+        return sb.toString();
     }
 }
