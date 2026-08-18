@@ -28,13 +28,12 @@ public class StandardParser {
             // Process the input PDF
             processPDF(inputDocument, outputDocument);
 
-            // Save the new PDF to a given filepath adn close
+            // Save the new PDF to a given filepath and close
             outputDocument.save(new File(outputPath));
             outputDocument.close();
         } catch(IOException e) {
             System.err.println("Error opening PDF file: " + e.getMessage());
         }
-
         System.out.print("Successfully parsed PDF file :)");
     }
 
@@ -103,7 +102,7 @@ public class StandardParser {
     /** Split a single word into its bold and regular parts
      *
      * @param word The word to split
-     * @return [boldPart, regularPart]
+     * @return The whole word as [boldPart, regularPart]
      */
     public String[] boldifyWord(String word) {
         // Count the letters in each word
@@ -125,22 +124,19 @@ public class StandardParser {
                 break;
             }
         }
-
+        // Return the whole word with bold and non-bold together
         return new String[]{
                 word.substring(0, boldUntil),
                 word.substring(boldUntil)};
     }
 
-    /** Takes a word and returns how many characters to make bold depending on its length
+    /** Takes a word and returns how many characters to make bold depending on its length with a simple
      *
      * @param wordLength The number of characters in the word
-     * @return How many words to make bold
+     * @return How many letters to make bold
      */
     private int getBoldLength(int wordLength) {
         if (wordLength <= 2) return 0;
-        if (wordLength <= 5) return 2;
-        if (wordLength <= 7) return 3;
-        if (wordLength <= 9) return 4;
         return wordLength / 2;
     }
 
