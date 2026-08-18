@@ -15,6 +15,10 @@ import java.util.List;
 
 public class StandardParser {
 
+    // Load both fonts once for the entire document - this font is standard for the used library
+    private final PDFont regularFont = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
+    private final PDFont boldFont    = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
+
     public StandardParser(String inputPath, String outputPath) {
         // Load the PDF and boldify it
         try(PDDocument inputDocument = Loader.loadPDF(new File(inputPath))) {
@@ -43,10 +47,6 @@ public class StandardParser {
     public void processPDF(PDDocument inputdocument, PDDocument outputDocument) throws IOException {
         // Create a stripper for reading input documents contents
         PDFTextStripper stripper = new PDFTextStripper();
-
-        // Load both fonts once for the entire document - this font is standard for the used library
-        PDFont regularFont = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
-        PDFont boldFont    = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
 
         // Loop through pages, calling the boldify algorithm on one page at a time
         int numberOfPages = inputdocument.getNumberOfPages();
