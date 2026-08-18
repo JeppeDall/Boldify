@@ -17,19 +17,17 @@ import java.util.Scanner;
 public class StandardParser {
 
 
-    public StandardParser() {
-        String inputPath = "C:\\Users\\Jeppe\\OneDrive\\Skrivebord\\test.pdf";
+    public StandardParser(String inputPath, String outputPath) {
 
         // Load the PDF and boldify it
         try(PDDocument inputDocument = Loader.loadPDF(new File(inputPath))) {
-            // Create a output PDF to insert processed pages
+            // Create an output PDF to insert processed pages
             PDDocument outputDocument = new PDDocument();
 
             // Process the input PDF
             processPDF(inputDocument, outputDocument);
 
             // Save the new PDF to a given filepath
-            String outputPath = "C:\\Users\\Jeppe\\OneDrive\\Skrivebord\\testOutput.pdf";
             outputDocument.save(new File(outputPath));
             outputDocument.close();
         } catch(IOException e) {
