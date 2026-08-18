@@ -153,22 +153,28 @@ public class StandardParser {
         PDPage newPage = new PDPage();
         outputDocument.addPage(newPage);
 
+        // Create a new page
         try (PDPageContentStream cs = new PDPageContentStream(outputDocument, newPage)) {
             cs.beginText();
             cs.newLineAtOffset(50, 750);
             cs.setLeading(16f);
 
             try {
+                // For each line
                 for (List<TextRun> line : lines) {
+                    // For each TextRun (half of a word)
                     for (TextRun run : line) {
                         if (run.text().isEmpty()) continue;
+                        // Write the text as bold or non-bold depending on flag
                         PDFont font = run.bold() ? boldFont : regularFont;
                         cs.setFont(font, 12);
                         cs.showText(sanitizeForFont(run.text(), font));
                     }
+                    // Go to next line to write
                     cs.newLine();
                 }
             } finally {
+                // Once everything is written
                 cs.endText();
             }
         }
@@ -182,6 +188,7 @@ public class StandardParser {
      */
     private String sanitizeForFont(String text, PDFont font) {
         StringBuilder sb = new StringBuilder();
+
         for (int i = 0; i < text.length(); ) {
             int codePoint = text.codePointAt(i);
             String ch = new String(Character.toChars(codePoint));
