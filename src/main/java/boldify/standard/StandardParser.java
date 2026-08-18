@@ -12,13 +12,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Scanner;
 
 public class StandardParser {
 
-
     public StandardParser(String inputPath, String outputPath) {
-
         // Load the PDF and boldify it
         try(PDDocument inputDocument = Loader.loadPDF(new File(inputPath))) {
             // Create an output PDF to insert processed pages
@@ -27,14 +24,13 @@ public class StandardParser {
             // Process the input PDF
             processPDF(inputDocument, outputDocument);
 
-            // Save the new PDF to a given filepath
+            // Save the new PDF to a given filepath adn close
             outputDocument.save(new File(outputPath));
             outputDocument.close();
         } catch(IOException e) {
             System.err.println("Error opening PDF file: " + e.getMessage());
         }
 
-        // Done for now
         System.out.print("Successfully parsed PDF file :)");
     }
 
@@ -48,7 +44,7 @@ public class StandardParser {
         // Create a stripper for reading input documents contents
         PDFTextStripper stripper = new PDFTextStripper();
 
-        // Load both fonts once for the entire document
+        // Load both fonts once for the entire document - this font is standard for the used library
         PDFont regularFont = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
         PDFont boldFont    = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
 
@@ -59,46 +55,16 @@ public class StandardParser {
             // i is 1-indexed in the library
             stripper.setStartPage(i+1);
             stripper.setEndPage(i+1);
+
             // Get the text from page i
             String text = stripper.getText(inputdocument);
 
-            // Copy the font from the original page
-            PDPage page = inputdocument.getPage(i);
-            PDFont font = copyFont(outputDocument, page);
-
-            // Save each page in a list wth each line being a list within it
+            // Save each page in a list with each line being a list within it
             List<List<TextRun>> boldifiedLines = boldifyText(text);
+
+            // Add the page to the final PDF
             addToPDF(boldifiedLines, outputDocument, regularFont, boldFont);
         }
-    }
-
-    /** Copy the font used on the page as the FOnt for the outputdocument.
-     * If no font is found, teh default will be Helvetica
-     *
-     * @param outputDocument The document the font will be embedded into
-     * @param page The source page to inspect
-     * @throws IOException
-     */
-    private PDFont copyFont(PDDocument outputDocument, PDPage page) throws IOException {
-        PDResources resources = page.getResources();
-        if (resources != null) {
-            for (COSName fontName : resources.getFontNames()) {
-                PDFont sourceFont = resources.getFont(fontName);
-                PDFontDescriptor descriptor = sourceFont.getFontDescriptor();
-
-                if (descriptor != null) {
-                    PDStream fontFile2 = descriptor.getFontFile2(); // embedded TrueType
-                    if (fontFile2 != null) {
-                        try (InputStream in = fontFile2.createInputStream()) {
-                            return PDType0Font.load(outputDocument, in);
-                        }
-                    }
-                }
-                break; // only look at the first font on the page
-            }
-        }
-        // Default to Helvetica if no font is found
-        return new PDType1Font(Standard14Fonts.FontName.HELVETICA);
     }
 
     /** Use the TextRun record to create lines from some page text
