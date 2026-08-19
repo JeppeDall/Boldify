@@ -14,7 +14,9 @@ Managed via Maven ('pom.xml'):
 
 ## Usage
 Run with two arguments specifying the filepath to the input document as well as the filepath that the output document should be placed.
+
 NOTE: an existing file with the same name will be overwritten.
+
 Example filepath: C:\Some\Path\Containing\document.pdf
 
 ## How it works
